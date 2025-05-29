@@ -1,63 +1,62 @@
-from crypto_utils import (
-    mod_exp, generate_prime, generate_private_key, generate_public_key, compute_shared_secret,
-    generate_ecdsa_keypair, ecdsa_sign, ecdsa_verify
-)
+from crypto_utils import *
+
+# === Diffie-Hellman Implementation of Asymmetric Signatures (using ECDSA) ===
 
 def signed_dh_demo():
-    print("=== 带身份验证的 Diffie-Hellman（使用 ECC / ECDSA 签名） ===\n")
+    print("=== Diffie-Hellman with authentication (using ECDSA signatures) ===\n")
 
-    # 公共参数
+    # common parameter
     p = generate_prime(512)
     g = 2
-    print(f"[参数] p = {p}\n[参数] g = {g}\n")
+    print(f"[parameter] p = {p}\n[parameter] g = {g}\n")
 
-    # 1. Alice 和 Bob 各自生成 ECDSA 密钥对
+    # Use ECDSA key signing
     alice_priv_key, alice_pub_key = generate_ecdsa_keypair()
     bob_priv_key, bob_pub_key = generate_ecdsa_keypair()
 
-    print("🔐 Alice 生成了 ECDSA 密钥对")
-    print("    公钥类型:", type(alice_pub_key))
-    print("🔐 Bob 生成了 ECDSA 密钥对")
-    print("    公钥类型:", type(bob_pub_key))
+    print("Alice generated ECDSA key pair")
+    print("    Public key type:", type(alice_pub_key))
+    print(" Bob generated ECDSA key pair")
+    print("    Public key type:", type(bob_pub_key))
     print()
 
-    # 2. Alice 生成 DH 公钥并签名
+    # Alice generates and signs the DH public key
     a_priv = generate_private_key(p)
     a_pub = generate_public_key(g, a_priv, p)
     a_pub_bytes = str(a_pub).encode()
-    a_signature = ecdsa_sign(a_pub_bytes, alice_priv_key)
+    a_signature = ecdsa_sign(a_pub_bytes, alice_priv_key)  # Using ECDSA Signatures
 
-    print("🔏 Alice 签名她的 DH 公钥:")
-    print("    公钥值:", a_pub)
-    print("    签名值:", a_signature.hex()[:64], "...(省略)")
+    print("Alice signs her DH public key:")
+    print("    public key value:", a_pub)
+    print("    signature value:", a_signature.hex()[:64], "...(an omission)")
     print()
 
-    # 3. Bob 生成 DH 公钥并签名
+    # Bob generates and signs the DH public key
     b_priv = generate_private_key(p)
     b_pub = generate_public_key(g, b_priv, p)
     b_pub_bytes = str(b_pub).encode()
-    b_signature = ecdsa_sign(b_pub_bytes, bob_priv_key)
+    b_signature = ecdsa_sign(b_pub_bytes, bob_priv_key)  # Using ECDSA Signatures
 
-    print("🔏 Bob 签名他的 DH 公钥:")
-    print("    公钥值:", b_pub)
-    print("    签名值:", b_signature.hex()[:64], "...(省略)")
+    print("Bob signs his DH public key:")
+    print("    public key value:", b_pub)
+    print("    signature value:", b_signature.hex()[:64], "...(an omission)")
     print()
 
-    # 4. Alice 验证 Bob 的签名
-    print("🕵️ Alice 验证 Bob 的签名...")
-    if ecdsa_verify(b_pub_bytes, b_signature, bob_pub_key):
-        print("✅ Alice 验证 Bob 的签名成功\n")
+    # Alice verifies Bob's signature.
+    print("Alice verifies Bob's signature....")
+    if ecdsa_verify(b_pub_bytes, b_signature, bob_pub_key):  # Authentication with ECDSA
+        print("Alice verifies Bob's signature successfully.\n")
     else:
-        raise ValueError("❌ Alice 验证 Bob 签名失败")
+        raise ValueError("Alice failed to verify Bob's signature.")
 
-    # 5. Bob 验证 Alice 的签名
-    print("🕵️ Bob 验证 Alice 的签名...")
-    if ecdsa_verify(a_pub_bytes, a_signature, alice_pub_key):
-        print("✅ Bob 验证 Alice 的签名成功\n")
+    # Bob verifies Alice's signature.
+    print("Bob verifies Alice's signature....")
+    if ecdsa_verify(a_pub_bytes, a_signature, alice_pub_key):  # Authentication with ECDSA
+        print("Bob verifies Alice's signature successfully.\n")
     else:
-        raise ValueError("❌ Bob 验证 Alice 签名失败")
+        raise ValueError("Bob failed to verify Alice's signature.")
 
-    # 6. 双方计算共享密钥
+    # Both parties compute the shared key
     a_secret = compute_shared_secret(b_pub, a_priv, p)
     b_secret = compute_shared_secret(a_pub, b_priv, p)
 
@@ -65,7 +64,7 @@ def signed_dh_demo():
     print("🔑 Bob Shared Secret:  ", b_secret)
 
     assert a_secret == b_secret
-    print("\n✅ 密钥一致，且 ECDSA 身份验证成功")
+    print("\nThe keys are identical and ECDSA authentication is successful.")
 
 if __name__ == "__main__":
     signed_dh_demo()

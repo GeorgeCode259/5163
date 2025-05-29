@@ -1,11 +1,11 @@
 import secrets
 import hashlib
 import hmac
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization
 
-# 快速幂模运算
+# Fast power modulo arithmetic 
 def mod_exp(base, exponent, modulus):
     result = 1
     base %= modulus
@@ -16,7 +16,7 @@ def mod_exp(base, exponent, modulus):
         base = (base * base) % modulus
     return result
 
-# Miller-Rabin 素性测试
+# Miller-Rabin  primality test
 def is_probable_prime(n, k=40):
     if n in (2, 3):
         return True
@@ -39,22 +39,22 @@ def is_probable_prime(n, k=40):
             return False
     return True
 
-# 随机生成素数
-def generate_prime(bits=512):
+# Randomly generated prime numbers 
+def generate_prime(bits=512): 
     while True:
         candidate = secrets.randbits(bits) | 1
         if is_probable_prime(candidate):
             return candidate
 
-# 生成私钥
+# Generate private key 
 def generate_private_key(p):
     return secrets.randbelow(p - 2) + 2
 
-# 生成公钥
+# Generate public key 
 def generate_public_key(g, private_key, p):
     return mod_exp(g, private_key, p)
 
-# 计算共享密钥
+# Calculating a shared key 
 def compute_shared_secret(peer_public_key, private_key, p):
     return mod_exp(peer_public_key, private_key, p)
 
@@ -62,30 +62,78 @@ def compute_shared_secret(peer_public_key, private_key, p):
 def hmac_sha256(key: bytes, message: bytes) -> bytes:
     return hmac.new(key, message, hashlib.sha256).digest()
 
-# 派生共享密钥
+# Derived shared keys 
 def derive_key(shared_secret: int, salt: bytes = b"PAKE") -> bytes:
     secret_bytes = shared_secret.to_bytes((shared_secret.bit_length() + 7) // 8, 'big')
     return hashlib.pbkdf2_hmac('sha256', secret_bytes, salt, iterations=100000)
 
+# === RSA ===
 
+# Generate RSA key pairs 
+def generate_rsa_keypair(key_size=2048):
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=key_size,
+    )
+    public_key = private_key.public_key()
+    return private_key, public_key
 
-# === ECC (ECDSA) 支持 ===
+# Sign the message 
+def rsa_sign(message: bytes, private_key) -> bytes:
+    return private_key.sign(
+        message,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
 
-# 生成 ECDSA 椭圆曲线密钥对
+# Verify Signature
+def rsa_verify(message: bytes, signature: bytes, public_key) -> bool:
+    try:
+        public_key.verify(
+            signature,
+            message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        return True
+    except Exception:
+        return False
+    
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+
+# === ECC / ECDSA ===
+
 def generate_ecdsa_keypair():
+    """
+    Generate ECDSA (secp256r1) key pair
+    Returns (private_key, public_key)
+    """
     private_key = ec.generate_private_key(ec.SECP256R1(), backend=default_backend())
     public_key = private_key.public_key()
     return private_key, public_key
 
-# 使用 ECDSA 签名消息
 def ecdsa_sign(message: bytes, private_key) -> bytes:
-    return private_key.sign(
+    """
+    Use ECDSA to sign messages with SHA-256.
+    """
+    signature = private_key.sign(
         message,
         ec.ECDSA(hashes.SHA256())
     )
+    return signature
 
-# 使用 ECDSA 验证签名
 def ecdsa_verify(message: bytes, signature: bytes, public_key) -> bool:
+    """
+    Verify ECDSA signature, return True/False
+    """
     try:
         public_key.verify(
             signature,
