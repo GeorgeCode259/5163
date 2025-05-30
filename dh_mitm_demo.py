@@ -30,23 +30,5 @@ def dh_mitm_simulation():
     print("Both actually share the key with Eve (MITM success)")
     print("Eve has a shared key with each party to decrypt the communication")
 
-    print("\n--- Scenario 2: Signature Verification, Eve Replacement is Detected ---")
-
-    # Bob signs his public key with his RSA private key.
-    bob_privkey, bob_pubkey = generate_rsa_keypair()
-    bob_pub_bytes = str(bob_pub).encode()
-    bob_signature = rsa_sign(bob_pub_bytes, bob_privkey)
-
-    # Eve replaces bob_pub with fake_pub, but can't forge signatures
-    fake_pub_bytes = str(fake_pub).encode()
-
-    print("Alice receives Bob's public key (which has been tampered with) and original signature and tries to verify it:")
-    verified = rsa_verify(fake_pub_bytes, bob_signature, bob_pubkey)
-
-    if verified:
-        print("Signature verification passes, attack not detected (shouldn't be)")
-    else:
-        print("Signature verification failed! Man-in-the-middle attack detected")
-
 if __name__ == "__main__":
     dh_mitm_simulation()
